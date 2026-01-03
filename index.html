@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+
+<meta charset="UTF-8" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Kana Audio Quiz with GIFs</title>
+
+<style>
+
+body {
+
+  font-family:"Hiragino Kaku Gothic Pro","Meiryo",sans-serif;
+
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  padding:40px;
+
+  color:#333;
+
+  text-align:center;
+
+}
+
+h1 {color:#b23b3b;font-size:2em;margin-bottom:20px;}
+
+button {font-size:18px;padding:12px 24px;margin:10px;border-radius:12px;cursor:pointer;transition:.3s;}
+
+#playSound {background:white;color:#b23b3b;border:3px solid #b23b3b;}
+
+#playSound:hover {background:#ffe6f2;}
+
+.choice {background:#b23b3b;color:white;border:2px solid #b23b3b;}
+
+.choice:hover {background:#ff4da6;}
+  
+#timer {
+
+  font-weight: bold;
+
+  font-size: 20px;
+
+}
+
+
+
+#result {font-size:20px;margin-top:20px;font-weight:bold;}
+
+#gif {margin-top:20px;max-width:250px;border-radius:12px;}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>🎧 Kana Listening Quiz</h1>
+
+<button id="playSound">▶️ Play Sound</button>
+  
+<div id="timer" style="font-size:18px;margin-top:10px;color:#b23b3b;"></div>
+
+<div id="choices"></div>
+
+<div id="result">Click "▶️ Play Sound" to start the quiz 🎧</div>
+
+<img id="gif" src="" alt="" />
+  
+  <script>
+
+const kanaToRomaji = {
+
+  // Basic
+
+  あ:"a", い:"i", う:"u", え:"e", お:"o",
+
+  か:"ka", き:"ki", く:"ku", け:"ke", こ:"ko",
+
+  さ:"sa", し:"shi", す:"su", せ:"se", そ:"so",
+
+  た:"ta", ち:"chi", つ:"tsu", て:"te", と:"to",
+
+  な:"na", に:"ni", ぬ:"nu", ね:"ne", の:"no",
+
+  は:"ha", ひ:"hi", ふ:"fu", へ:"he", ほ:"ho",
+
+  ま:"ma", み:"mi", む:"mu", め:"me", も:"mo",
+
+  や:"ya", ゆ:"yu", よ:"yo",
+
+  ら:"ra", り:"ri", る:"ru", れ:"re", ろ:"ro",
+
+  わ:"wa", を:"wo", ん:"n",
+
+  // Dakuten
+
+  が:"ga", ぎ:"gi", ぐ:"gu", げ:"ge", ご:"go",
+
+  ざ:"za", じ:"ji", ず:"zu", ぜ:"ze", ぞ:"zo",
+
+  だ:"da", ぢ:"ji", づ:"zu", で:"de", ど:"do",
+
+  ば:"ba", び:"bi", ぶ:"bu", べ:"be", ぼ:"bo",
+
+  ぱ:"pa", ぴ:"pi", ぷ:"pu", ぺ:"pe", ぽ:"po",
+
+  // Yōon
+
+  きゃ:"kya", きゅ:"kyu", きょ:"kyo",
+
+  しゃ:"sha", しゅ:"shu", しょ:"sho",
+
+  ちゃ:"cha", ちゅ:"chu", ちょ:"cho",
+
+  にゃ:"nya", にゅ:"nyu", にょ:"nyo",
+
+  ひゃ:"hya", ひゅ:"hyu", ひょ:"hyo",
+
+  みゃ:"mya", みゅ:"myu", みょ:"myo",
+
+  りゃ:"rya", りゅ:"ryu", りょ:"ryo",
+
+  // Yōon (voiced)
+
+  ぎゃ:"gya", ぎゅ:"gyu", ぎょ:"gyo",
+
+  じゃ:"ja", じゅ:"ju", じょ:"jo",
+
+  びゃ:"bya", びゅ:"byu", びょ:"byo",
+
+  ぴゃ:"pya", ぴゅ:"pyu", ぴょ:"pyo"
+
+};
+
+const audio = new Audio();
+
+const baseURL = "https://raw.githubusercontent.com/Kuuuube/kana-quiz-sounds/master/audio/0/";
+
+const sounds = [
+
+  // Basic
+
+  "あ","い","う","え","お",
+
+  "か","き","く","け","こ",
+
+  "さ","し","す","せ","そ",
+
+  "た","ち","つ","て","と",
+
+  "な","に","ぬ","ね","の",
+
+  "は","ひ","ふ","へ","ほ",
+
+  "ま","み","む","め","も",
+
+  "や","ゆ","よ",
+
+  "ら","り","る","れ","ろ",
+
+  "わ","を","ん",
+
+  // Dakuten / Handakuten
+
+  "が","ぎ","ぐ","げ","ご",
+
+  "ざ","じ","ず","ぜ","ぞ",
+
+  "だ","ぢ","づ","で","ど",
+
+  "ば","び","ぶ","べ","ぼ",
+
+  "ぱ","ぴ","ぷ","ぺ","ぽ",
+
+  // Yōon
+
+  "きゃ","きゅ","きょ",
+
+  "しゃ","しゅ","しょ",
+
+  "ちゃ","ちゅ","ちょ",
+
+  "にゃ","にゅ","にょ",
+
+  "ひゃ","ひゅ","ひょ",
+
+  "みゃ","みゅ","みょ",
+
+  "りゃ","りゅ","りょ",
+
+  // Yōon with dakuten / handakuten
+
+  "ぎゃ","ぎゅ","ぎょ",
+
+  "じゃ","じゅ","じょ",
+
+  "びゃ","びゅ","びょ",
+
+  "ぴゃ","ぴゅ","ぴょ"
+
+];
+
+let currentKana = "";
+
+let questionCount = 0;
+
+let score = 0;
+
+let timeLeft = 5;
+
+let timerInterval = null;
+    
+let gameStarted = false;
+
+
+const maxQuestions = 25; // shorter for demonstration
+
+function newQuestion() {
+
+  if(questionCount >= maxQuestions) return endQuiz();
+
+  questionCount++;
+
+  currentKana = sounds[Math.floor(Math.random() * sounds.length)];
+
+  const choicesDiv = document.getElementById('choices');
+
+  choicesDiv.innerHTML = '';
+
+  const options = new Set([currentKana]);
+
+  while(options.size < 4) options.add(sounds[Math.floor(Math.random() * sounds.length)]);
+
+  [...options].sort(()=>0.5-Math.random()).forEach(kana=>{
+
+    const btn = document.createElement('button');
+
+    btn.className='choice';
+
+    btn.textContent=kana;
+
+    btn.onclick = ()=>checkAnswer(kana);
+
+    choicesDiv.appendChild(btn);
+
+  });
+
+  document.getElementById('result').textContent =
+
+  `Q ${questionCount} / ${maxQuestions} — You have 5 seconds!`;
+
+startTimer();
+
+}
+
+function playCurrentSound() {
+
+  const romaji = kanaToRomaji[currentKana];
+
+  if (!romaji) {
+
+    alert("No audio mapping for " + currentKana);
+
+    return;
+
+  }
+
+  audio.src = `${baseURL}${romaji}.mp3`;
+
+  audio.currentTime = 0;
+
+  audio.play();
+
+}
+
+function startTimer() {
+
+  clearInterval(timerInterval);
+
+  timeLeft = 5;
+
+  updateTimer();
+
+  timerInterval = setInterval(() => {
+
+    timeLeft--;
+
+    updateTimer();
+
+    if (timeLeft <= 0) {
+
+      clearInterval(timerInterval);
+
+      timeUp();
+
+    }
+
+  }, 1000);
+
+}
+
+function updateTimer() {
+
+  document.getElementById("timer").textContent =
+
+    `⏱ Time left: ${timeLeft}s`;
+
+}
+
+function timeUp() {
+
+  document.getElementById("result").textContent =
+
+    `⏰ Time’s up! Correct answer: ${currentKana}`;
+
+  setTimeout(newQuestion, 1200);
+
+}
+
+function checkAnswer(answer){
+
+clearInterval(timerInterval);
+
+  const result = document.getElementById('result');
+
+  if(answer===currentKana){
+
+    score++;
+
+    const messages = [
+
+      "Great job! 🌟","Awesome! ✅","You're doing amazing! 💪",
+
+      "Perfect! 🎯","Keep it up! 🚀"
+
+    ];
+
+    result.textContent = `⭕ ${messages[Math.floor(Math.random()*messages.length)]} (${questionCount}/${maxQuestions})`;
+
+  } else {
+
+    result.textContent = `❌ Wrong! Correct: ${currentKana} — Don't worry, try the next one! (${questionCount}/${maxQuestions})`;
+
+  }
+
+  setTimeout(newQuestion, 1200);
+
+}
+
+function endQuiz(){
+
+  document.getElementById('choices').innerHTML='';
+
+  const mEl = document.getElementById('result');
+
+  const gifEl = document.getElementById('gif');
+
+  let text="", gif="";
+
+  if(score>=21){
+
+    text="🌟 Perfect Score! You're a kana master! 🌟";
+
+    gif="https://raw.githubusercontent.com/k58835032-notbot/lesson-9-morae/main/cool%20cute%20cat.gif";
+
+  } else if(score>=12){
+
+    text="👍 Excellent work! Keep practicing and you'll be unstoppable!";
+
+    gif="https://raw.githubusercontent.com/k58835032-notbot/lesson-9-morae/main/cute%20cat%20walking.gif";
+
+  } else {
+
+    text="🌱 Don’t worry — practice makes perfect!";
+
+    gif="https://raw.githubusercontent.com/k58835032-notbot/lesson-9-morae/main/sad%20cute%20cat.gif";
+
+  }
+
+mEl.textContent = `${text} Score: ${score} / ${maxQuestions}`;
+
+  gifEl.src = gif;
+
+  document.getElementById('playSound').disabled = true;
+
+}
+
+document.getElementById('playSound').addEventListener('click', () => {
+  if (!gameStarted) {
+    gameStarted = true;
+    newQuestion();       // start the game
+    setTimeout(playCurrentSound, 100); // play first sound after setup
+  } else {
+    playCurrentSound();  // normal replay
+  }
+});
+
+
+
+</script>
+
+</body>
+
+</html>
